@@ -6,3 +6,6 @@ for i in range(len(prices)):
         sell = prices[j]
         ans = max(ans, sell - buy)
 print(ans)
+
+s = "VIII"
+s.replace("dd" , "III")
