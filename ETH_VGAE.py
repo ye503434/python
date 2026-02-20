@@ -52,3 +52,4 @@ edge_index_torch = torch.from_numpy(edge_index).to(torch.long)
 torch.save(edge_index_torch, 'edge_index.pt')
 np.save('node_features.npy' , node_features)
 print("處理完成")
+#
