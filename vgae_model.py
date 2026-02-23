@@ -48,7 +48,7 @@ def train():
     optimizer.zero_grad()
     z = model.encode(train_data.x, train_data.edge_index)
     loss = model.recon_loss(z, train_data.pos_edge_label_index)
-    loss = loss+(1 / train_data.num_nodes) * model.kl_loss()
+    loss = loss + (1 / train_data.numNodes) * model.kl_loss()
     loss.backward()
     optimizer.step()
     return loss.item()
