@@ -8,7 +8,7 @@ file12to13 = r'D:\12000000to12999999_BlockTransaction.csv'
 file11to12 = r'D:\11000000to11999999_BlockTransaction.csv'
 chunkSize = 500000
 
-# --把11-13的from到to的地址收集並且寫入二進位檔案。 結果: 共有50196418個唯一節點
+# 把11-13的from到to的地址收集並且寫入二進位檔案。 結果: 共有50196418個唯一節點，邊數:382171280
 uniqueAddr = set()
 
 for filePath in [file11to12,file12to13]:
@@ -54,7 +54,7 @@ for filePath in [file11to12, file12to13]:
                 missing_val = dstLowerStrip[dst == -1].iloc[0]
                 col_name = "to"
 
-            print(f'\n[偵錯中] 在 {col_name} 欄位發現缺漏地址: "{missing_val}"')
+            print(f'\n偵錯，在 {col_name} 欄位發現缺漏地址: "{missing_val}"')
             print(f'字串長度: {len(str(missing_val))}')
             print(f'是否為空值: {pd.isna(missing_val)}')
             exit()
