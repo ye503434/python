@@ -4,7 +4,7 @@ import numpy as np
 nodeFeatures = np.load('../nodeFeatures11to13.npy')#載入特徵檔
 nodeFeaturesLog = np.log1p(nodeFeatures)#log1p = log(x+1)
 
-#Z-Score 標準化：讓數據的平均值為0，標準差為1
+#特徵縮小，Z-Score 標準化：讓數據的平均值為0，標準差為1
 mean = nodeFeaturesLog.mean(axis=0)
 std = nodeFeaturesLog.std(axis=0)
 final = (nodeFeaturesLog - mean) / (std + 1e-8)#std+ 1e-8 防止除以0
