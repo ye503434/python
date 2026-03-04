@@ -11,26 +11,27 @@ chunkSize = 500000
 # 把11-13的from到to的地址收集並且寫入二進位檔案。 結果: 共有50196418個唯一節點，邊數:382171280
 uniqueAddr = set()
 
-for filePath in [file11to12,file12to13]:
-    print('掃描中......')
-    total = 361 if "11000000" in filePath else 405
-    for chunk in tqdm(pd.read_csv(filePath, chunksize=chunkSize, usecols=['from', 'to']), total= total):
-        chunk = chunk.replace(r'^\s*$',np.nan,regex=True).dropna(subset = ['from','to'])
-        uniqueAddr.update(chunk['from'].str.lower().str.strip().unique())
-        uniqueAddr.update(chunk['to'].str.lower().str.strip().unique())
-
-addrToId = {addr: i for i , addr in enumerate(uniqueAddr)}
-
-with open('../addrMapCombine.pkl', 'wb') as f :
-    pickle.dump(addrToId, f)
-numNodes = len(addrToId)
-print(f'掃描完成，總共{numNodes}唯一地址')
+# for filePath in [file11to12,file12to13]:
+#     print('掃描中......')
+#     total = 361 if "11000000" in filePath else 405
+#     for chunk in tqdm(pd.read_csv(filePath, chunksize=chunkSize, usecols=['from', 'to']), total= total):
+#         chunk = chunk.replace(r'^\s*$',np.nan,regex=True).dropna(subset = ['from','to'])
+#         uniqueAddr.update(chunk['from'].str.lower().str.strip().unique())
+#         uniqueAddr.update(chunk['to'].str.lower().str.strip().unique())
+#
+# addrToId = {addr: i for i , addr in enumerate(uniqueAddr)}
+#
+# with open('../addrMapCombine.pkl', 'wb') as f :
+#     pickle.dump(addrToId, f)
+# numNodes = len(addrToId)
+# print(f'掃描完成，總共{numNodes}唯一地址')
 
 with open('../addrMapCombine.pkl', 'rb') as f:
     addrToId = pickle.load(f)
+
 numNodes = len(addrToId)
 print('初始化特徵矩陣和邊')
-nodeFeatures = np.zeros((numNodes, 3), dtype=np.float32)
+nodeFeatures = np.zeros((numNodes, 5), dtype=np.float32)
 edgeList = []
 
 for filePath in [file11to12, file12to13]:
@@ -69,9 +70,20 @@ for filePath in [file11to12, file12to13]:
             nodeFeatures[s, 0] += 1  # 出度
             nodeFeatures[d, 1] += 1  # 入度
             nodeFeatures[s, 2] += v  # 總交易金額
+            nodeFeatures[s, 3] += v**2 # 金額平方和
+            nodeFeatures[s, 4] = max(nodeFeatures[s, 4],v) # 最大單筆金額
 
         edgeList.append(np.stack([src, dst], axis=0))
+print("\n正在計算特徵後處理 (標準差)...")
+# 防止除以 0 的錯誤
+out_counts = nodeFeatures[:, 0].copy()
+out_counts[out_counts == 0] = 1
 
+# 標準差公式: sqrt( E[X^2] - (E[X])^2 )
+mean_sq = nodeFeatures[:, 3] / out_counts
+mean = nodeFeatures[:, 2] / out_counts
+# 使用 np.maximum 確保根號內不為負數 (浮點數誤差可能導致極小的負數)
+nodeFeatures[:, 3] = np.sqrt(np.maximum(mean_sq - mean**2, 0))
 print("\n正在合併邊")
 edgeIndex = np.concatenate(edgeList, axis=1)
 edgeIndexTorch = torch.from_numpy(edgeIndex).to(torch.long)
