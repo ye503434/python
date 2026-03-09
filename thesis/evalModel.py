@@ -25,7 +25,12 @@ class SAGEEncoder(torch.nn.Module):  # GCN是無向的，SAGE是有向的 GAT偏
 if __name__ == '__main__':
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
-    x = torch.from_numpy(np.load('../nodeFeaturesFinal.npy')).float()
+    x_raw = np.load('../nodeFeatures11to13.npy')
+
+    x_log = np.log1p(x_raw)
+    x_final = (x_log - x_log.mean(axis=0)) / (x_log.std(axis=0) + 1e-6)
+
+    x = torch.from_numpy(x_final).float()
     edgeIndex = torch.load('../edgeIndex11to13.pt', weights_only=True)
 
     # Pyg的Data物件
@@ -61,7 +66,9 @@ if __name__ == '__main__':
 
     full_z = torch.cat(zlist, dim=0)
     print("正在計算 AUC 與 AP 分數...")
-    auc, ap = model.test(full_z, testData.pos_edge_label_index, testData.neg_edge_label_index)
+    auc, ap = model.test(full_z,
+                         testData.pos_edge_label_index,
+                         testData.neg_edge_label_index)
     #計算 AUC 與 AP 分數
     print(f"AUC: {auc:.4f} ")#越接近1分類越準
     print(f"AP:  {ap:.4f}  ")#平均精準度

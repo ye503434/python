@@ -17,7 +17,6 @@ api.upload_folder(
         "addrMapCombine.pkl",
         "edgeIndex11to13.pt",
         "nodeFeatures11to13.npy",
-        "nodeFeaturesFinal.npy"
     ],
     commit_message="備份 11-13 區塊預處理結果"
 )

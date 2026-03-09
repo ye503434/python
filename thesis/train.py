@@ -22,7 +22,15 @@ class SAGEEncoder(torch.nn.Module):  # GCN是無向的，SAGE是有向的 GAT偏
 
 
 if __name__ == '__main__':
-    x = torch.from_numpy(np.load('../nodeFeaturesFinal.npy')).float()
+    x_raw = np.load('../nodeFeatures11to13.npy')
+
+    # 使用 log(1+x) 進行壓縮，能把 10,000 變成 9.2，把 0 變成 0，能有效平滑以太坊金額跨度過大的問題
+    x_log = np.log1p(x_raw)
+
+    # 再做一次標準化，讓平均值為 0，標準差為 1
+    x_final = (x_log - x_log.mean(axis=0)) / (x_log.std(axis=0) + 1e-6)
+
+    x = torch.from_numpy(x_final).float()
     edgeIndex = torch.load('../edgeIndex11to13.pt', weights_only=True)
 
     # Pyg的Data物件
