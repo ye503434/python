@@ -28,9 +28,14 @@ if __name__ == '__main__':
     x_raw = np.load('../nodeFeatures11to13.npy')
 
     x_log = np.log1p(x_raw)
+    del x_raw
+
     x_final = (x_log - x_log.mean(axis=0)) / (x_log.std(axis=0) + 1e-6)
+    del x_log
 
     x = torch.from_numpy(x_final).float()
+    del x_final
+
     edgeIndex = torch.load('../edgeIndex11to13.pt', weights_only=True)
 
     # Pyg的Data物件

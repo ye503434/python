@@ -26,11 +26,15 @@ if __name__ == '__main__':
 
     # 使用 log(1+x) 進行壓縮，能把 10,000 變成 9.2，把 0 變成 0，能有效平滑以太坊金額跨度過大的問題
     x_log = np.log1p(x_raw)
+    del x_raw
 
     # 再做一次標準化，讓平均值為 0，標準差為 1
     x_final = (x_log - x_log.mean(axis=0)) / (x_log.std(axis=0) + 1e-6)
+    del x_log
 
     x = torch.from_numpy(x_final).float()
+    del x_final
+
     edgeIndex = torch.load('../edgeIndex11to13.pt', weights_only=True)
 
     # Pyg的Data物件
@@ -60,9 +64,14 @@ if __name__ == '__main__':
         for batch in trainLoader:
             batch = batch.to(device)
             optimizer.zero_grad()
+
+            #得到隱含向量 Z
             z = model.encode(batch.x, batch.edge_index)
 
+            #計算重構損失與 KL 散度
             reconLoss = model.recon_loss(z, batch.edge_index)
+
+            #將 KL Loss 正規化至 batch 節點數
             klLoss = model.kl_loss() / batch.x.size(0)
             loss = reconLoss + klLoss
 

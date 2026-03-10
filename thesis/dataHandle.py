@@ -31,14 +31,15 @@ with open('../addrMapCombine.pkl', 'rb') as f:
 
 numNodes = len(addrToId)
 print('初始化特徵矩陣和邊')
-nodeFeatures = np.zeros((numNodes, 5), dtype=np.float32)
+nodeFeatures = np.zeros((numNodes, 7), dtype=np.float32)
+lastBlock = np.zeros(numNodes, dtype=np.int64)
 edgeList = []
 
 for filePath in [file11to12, file12to13]:
     print(f'將數據轉換為ID格式:{filePath}')
     total = 361 if "11000000" in filePath else 405
 
-    for chunk in tqdm(pd.read_csv(filePath, chunksize=chunkSize, usecols=['from', 'to', 'value']), total=total):
+    for chunk in tqdm(pd.read_csv(filePath, chunksize=chunkSize, usecols=['from', 'to', 'value','blockNumber']), total=total):
         # regex開啟正則表達，偵測到空改成nan，dropna可以刪除nan資料
         chunk = chunk.replace(r'^\s*$',np.nan,regex=True).dropna(subset = ['from','to'])
         #轉小寫、去除字串前後的空白字元
@@ -50,45 +51,55 @@ for filePath in [file11to12, file12to13]:
         dst = np.array([addrToId.get(a, -1) for a in dstLowerStrip], dtype=np.int64)
         #除錯，找不到回傳-1
         if (src == -1).any() or (dst == -1).any():
-            # 跳出第一個找不到的地址
-            if (src == -1).any():
-                missing_val = srcLowerStrip[src == -1].iloc[0]
-                col_name = "from"
-            else:
-                missing_val = dstLowerStrip[dst == -1].iloc[0]
-                col_name = "to"
-
-            print(f'\n偵錯，在 {col_name} 欄位發現缺漏地址: "{missing_val}"')
-            print(f'字串長度: {len(str(missing_val))}')
-            print(f'是否為空值: {pd.isna(missing_val)}')
+            print(f'\n偵測到未知地址，請檢查 addrMap')
             exit()
 
         #數值處理 Wei 轉 Ether 1e18 = 10的18次方
         #.values可以改成 .to_numpy() 更符合現代
         val = chunk['value'].values.astype(np.float32) / 1e18
-        for s, d, v in zip(src, dst, val):
+        blocks = chunk['blockNumber'].values.astype(np.int64)
+        for s, d, v, b in zip(src, dst, val, blocks):
             nodeFeatures[s, 0] += 1  # 出度
             nodeFeatures[d, 1] += 1  # 入度
             nodeFeatures[s, 2] += v  # 總交易金額
             nodeFeatures[s, 3] += v**2 # 金額平方和
             nodeFeatures[s, 4] = max(nodeFeatures[s, 4],v) # 最大單筆金額
 
+            if lastBlock[s] > 0 :
+                gap = float(b - lastBlock[s])
+                if gap>=0:
+                    nodeFeatures[s,5] += gap   #累加區塊差
+                    nodeFeatures[s,6] += gap**2#累加去塊差平方
+            lastBlock[s] = b
+
         edgeList.append(np.stack([src, dst], axis=0))
+#釋放輔助陣列，節省記憶體
+del lastBlock
 print("\n正在計算特徵後處理 (標準差)...")
-# 防止除以 0 的錯誤
+# 有效交易次數 (計算平均值與標準差時的分母)
+# 區塊間隔數為 出度 - 1
 out_counts = nodeFeatures[:, 0].copy()
+gap_counts = np.maximum(out_counts - 1, 1e-6) # 防止除以 0
 out_counts[out_counts == 0] = 1
 
-# 標準差公式: sqrt( E[X^2] - (E[X])^2 )
-mean_sq = nodeFeatures[:, 3] / out_counts
-mean = nodeFeatures[:, 2] / out_counts
-# 使用 np.maximum 確保根號內不為負數 (浮點數誤差可能導致極小的負數)
-nodeFeatures[:, 3] = np.sqrt(np.maximum(mean_sq - mean**2, 0))
-print("\n正在合併邊")
+# 1. 計算金額標準差 (Feature 3)
+mean_sq_val = nodeFeatures[:, 3] / out_counts
+mean_val = nodeFeatures[:, 2] / out_counts
+nodeFeatures[:, 3] = np.sqrt(np.maximum(mean_sq_val - mean_val**2, 0))
+
+# 2. 計算平均區塊差 (Feature 5)
+nodeFeatures[:, 5] = nodeFeatures[:, 5] / gap_counts
+
+# 3. 計算區塊差標準差 (Feature 6: 時間穩定性) [cite: 416, 437]
+mean_sq_gap = nodeFeatures[:, 6] / gap_counts
+mean_gap = nodeFeatures[:, 5] # 已經是平均值了
+nodeFeatures[:, 6] = np.sqrt(np.maximum(mean_sq_gap - mean_gap**2, 0))
+
+print("\n正在合併邊...")
 edgeIndex = np.concatenate(edgeList, axis=1)
 edgeIndexTorch = torch.from_numpy(edgeIndex).to(torch.long)
 
-print('儲存檔案')
+print('儲存 7 維特徵與邊...')
 torch.save(edgeIndexTorch, '../edgeIndex11to13.pt')
 np.save('../nodeFeatures11to13.npy', nodeFeatures)
-print(f'處理完成，節點數:{numNodes}，邊數:{edgeIndex.shape[1]}')
+print(f'處理完成！節點數: {numNodes}, 邊數: {edgeIndex.shape[1]}, 特徵維度: {nodeFeatures.shape[1]}')

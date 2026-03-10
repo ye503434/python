@@ -9,7 +9,7 @@ mean = nodeFeaturesLog.mean(axis=0)
 std = nodeFeaturesLog.std(axis=0)
 final = (nodeFeaturesLog - mean) / (std + 1e-8)#std+ 1e-8 防止除以0
 
-np.save('../node3Features.npy', final.astype(np.float32))
+np.save('../nodeFeatures.npy', final.astype(np.float32))
 
 print('處裡完成',f'\n最大原始金額: {np.max(nodeFeatures[:,2])}', f'\n處理後最大值: {np.max(final[:,2])}')
 #最大原始金額: 50126404.0
