@@ -36,5 +36,20 @@
 7特徵 經過驗證模型 AUC:0.7955 AP:0.8683
 5特徵 ""         AUC:0.7668 AP:0.8494
 
+第二次驗證模型
+7特徵 :AUC: 0.8103 AP:  0.8756
 
+v3 終極版
+Skip-VGAE (64-dim) 7 維 + 深度採樣 AUC: 0.8327 AP:  0.8932
+
+2. v3 版本關鍵優化分析 (Key Optimizations in v3)
+根據 Bitcoin AML 論文 (Weber et al., 2019) 的啟發，在 v3 版本實作了以下技術突破：
+殘差跳躍連接 (Skip-Connection)：
+實作了 SkipSAGEEncoder，將原始 7 維特徵直接投影並與 GNN 隱含向量相加。
+這確保了模型在處理複雜圖結構時，仍能保留如「區塊高度差」等關鍵的時間行為特徵。
+隱含空間擴張 (Latent Space Expansion)：
+將 channels 從 32 提升至 64。
+更大的模型容量容許 VGAE 捕捉更細緻的異常行為，反映在 AP 提升至 0.89 的高水準。
+深度鄰居採樣 (Deep Sampling)：
+採樣策略從 [10, 5] 提高為 [15, 10]。
 

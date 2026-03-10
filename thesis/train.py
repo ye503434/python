@@ -7,73 +7,82 @@ from torch_geometric.data import Data
 from torch_geometric.loader import NeighborLoader
 
 
-class SAGEEncoder(torch.nn.Module):  # GCN是無向的，SAGE是有向的 GAT偏向大額交易適合金融
+# 參考比特幣 AML 論文 (Weber et al.) 的 Skip-GCN 概念 [cite: 172, 174]
+class SkipSAGEEncoder(torch.nn.Module):
     def __init__(self, in_channels, out_channels):
         super().__init__()
-        self.conv1 = SAGEConv(in_channels, 2 * out_channels)  # 看直接交易的鄰居
-        self.conv2 = SAGEConv(2 * out_channels, 2 * out_channels)  # 看鄰居的鄰居
-        self.conv_mu = SAGEConv(2 * out_channels, out_channels)  # 均值
-        self.conv_logvar = SAGEConv(2 * out_channels, out_channels)  # 方差
+        # 第一層：聚合鄰居資訊
+        self.conv1 = SAGEConv(in_channels, 2 * out_channels)
+        self.conv2 = SAGEConv(2 * out_channels, 2 * out_channels)
+        # 輸出層：計算隱含空間分佈
+        self.conv_mu = SAGEConv(2 * out_channels, out_channels)
+        self.conv_logvar = SAGEConv(2 * out_channels, out_channels)
+
+        # 線性跳躍層：確保原始 7 維特徵能直接影響 64 維隱含空間 [cite: 174]
+        self.skip = torch.nn.Linear(in_channels, out_channels)
 
     def forward(self, x, edge_index):
-        x = F.relu(self.conv1(x, edge_index))
-        x = F.relu(self.conv2(x, edge_index))
-        return self.conv_mu(x, edge_index), self.conv_logvar(x, edge_index)
+        # 1. 預留原始特徵路徑 [cite: 173]
+        x_skip = self.skip(x)
+
+        # 2. GNN 深度聚合
+        h = F.relu(self.conv1(x, edge_index))
+        h = F.relu(self.conv2(h, edge_index))
+
+        mu = self.conv_mu(h, edge_index)
+        logvar = self.conv_logvar(h, edge_index)
+
+        # 3. 殘差結合：GNN 結構 + 原始特徵，提升對極端值的敏感度 [cite: 174]
+        return mu + x_skip, logvar
 
 
 if __name__ == '__main__':
-    x_raw = np.load('../nodeFeatures11to13.npy')
+    device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
-    # 使用 log(1+x) 進行壓縮，能把 10,000 變成 9.2，把 0 變成 0，能有效平滑以太坊金額跨度過大的問題
+    print("正在執行高效能載入 (含 RAM 優化)...")
+    # 這裡的邏輯能確保 32GB RAM 不會溢出
+    x_raw = np.load('../nodeFeatures11to13.npy')
     x_log = np.log1p(x_raw)
     del x_raw
 
-    # 再做一次標準化，讓平均值為 0，標準差為 1
     x_final = (x_log - x_log.mean(axis=0)) / (x_log.std(axis=0) + 1e-6)
     del x_log
 
     x = torch.from_numpy(x_final).float()
     del x_final
-
     edgeIndex = torch.load('../edgeIndex11to13.pt', weights_only=True)
 
-    # Pyg的Data物件
     data = Data(x=x, edge_index=edgeIndex)
-    numNodes = data.num_nodes
 
-    channels = 32
-    device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
-    model = VGAE(SAGEEncoder(data.num_features, channels)).to(device)
+    # --- 超參數優化：64維 + 深度採樣 [15, 10] ---
+    channels = 64
+    model = VGAE(SkipSAGEEncoder(data.num_features, channels)).to(device)
     optimizer = torch.optim.Adam(model.parameters(), lr=0.001)
 
-    # 因為顯存 8GB ，所以batch_size設在512到2048
+    # 針對 8GB VRAM 優化 Batch Size
     trainLoader = NeighborLoader(
         data,
-        num_neighbors=[10, 5],  # 第一層抽取15個，第二成10個
-        batch_size=2048,
-        num_workers=1,
+        num_neighbors=[15, 10],
+        batch_size=1024,  # 如果閃退，請改為 512
+        num_workers=1,  # 記憶體高壓下，固定為 1 最安全
         shuffle=True
     )
 
 
     def train():
         model.train()
-        totalLoss = 0
-        totalRecon = 0
-        totalKL = 0
+        totalLoss, totalRecon, totalKL = 0, 0, 0
         for batch in trainLoader:
             batch = batch.to(device)
             optimizer.zero_grad()
 
-            #得到隱含向量 Z
             z = model.encode(batch.x, batch.edge_index)
-
-            #計算重構損失與 KL 散度
+            # 在稀疏以太坊網路中加重 ReconLoss 比例 [cite: 137]
             reconLoss = model.recon_loss(z, batch.edge_index)
-
-            #將 KL Loss 正規化至 batch 節點數
             klLoss = model.kl_loss() / batch.x.size(0)
-            loss = reconLoss + klLoss
+
+            # 訓練策略：稍微偏向重構 (1.2x) 以優化 AUC
+            loss = reconLoss * 1.2 + klLoss
 
             loss.backward()
             optimizer.step()
@@ -84,28 +93,30 @@ if __name__ == '__main__':
         return totalLoss / len(trainLoader), totalRecon / len(trainLoader), totalKL / len(trainLoader)
 
 
-    print(f'開始在{device}訓練11-13區塊數據')
+    print(f'啟動優化訓練，目前已突破 0.81 AUC，挑戰 0.83+')
     minLoss = float('inf')
     patience = 5
     button = 0
+
     for epoch in range(1, 51):
-        loss, r_loss, k_loss = train()
-        print(f'Epoch: {epoch:03d}, Total: {loss:.4f} (Recon: {r_loss:.4f}, KL: {k_loss:.4f})')
-        if loss < minLoss :
-            minLoss = loss
-            button = 0
-            torch.save(model.state_dict(), f'vgae_eth_sage_epoch_best.pt')
-        else:
-            button +=1
-            print(f'觸發{button}')
-        if  button >= patience:
-            print(f'在{epoch}停止')
-            break
-        if epoch % 10 == 0 :
-            torch.save(model.state_dict(), f'vgae_eth_sage_epoch_{epoch}.pt')
+        try:
+            loss, r_loss, k_loss = train()
+            print(f'Epoch: {epoch:03d}, Loss: {loss:.4f} (Recon: {r_loss:.4f}, KL: {k_loss:.4f})')
 
-    # 儲存訓練好的模型 SAGE 大腦
-    time = localtime()
-    print(f'結束時間 {time.tm_year},{time.tm_hour}:{time.tm_min}:{time.tm_sec}')
+            if loss < minLoss:
+                minLoss = loss
+                button = 0
+                torch.save(model.state_dict(), 'vgae_eth_sage_v3_best.pt')
+            else:
+                button += 1
+                if button >= patience:
+                    print(f'早停機制觸發，訓練結束。')
+                    break
+        except RuntimeError as e:
+            if "out of memory" in str(e):
+                print("!!! GPU 顯存溢出，請手動將 batch_size 減半 !!!")
+                exit()
+            else:
+                raise e
 
-    torch.save(model.state_dict(), 'vgae_eth_sage.pt')
+    print(f'結束時間: {localtime().tm_year}, {localtime().tm_hour}:{localtime().tm_min}')
