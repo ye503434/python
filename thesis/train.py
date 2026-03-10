@@ -68,10 +68,11 @@ if __name__ == '__main__':
         shuffle=True
     )
 
-
+    ANNEAL_EPOCHS = 20
     def train():
         model.train()
         totalLoss, totalRecon, totalKL = 0, 0, 0
+        klWeight = min(1.0, epoch / ANNEAL_EPOCHS)
         for batch in trainLoader:
             batch = batch.to(device)
             optimizer.zero_grad()
@@ -82,7 +83,7 @@ if __name__ == '__main__':
             klLoss = model.kl_loss() / batch.x.size(0)
 
             # 訓練策略：稍微偏向重構 (1.2x) 以優化 AUC
-            loss = reconLoss * 1.2 + klLoss
+            loss = reconLoss * 1.2 + klLoss * klWeight
 
             loss.backward()
             optimizer.step()
@@ -90,23 +91,23 @@ if __name__ == '__main__':
             totalRecon += reconLoss.item()
             totalKL += klLoss.item()
 
-        return totalLoss / len(trainLoader), totalRecon / len(trainLoader), totalKL / len(trainLoader)
+        return totalLoss / len(trainLoader), totalRecon / len(trainLoader), totalKL / len(trainLoader),klWeight
 
 
     print(f'啟動優化訓練，目前已突破 0.81 AUC，挑戰 0.83+')
-    minLoss = float('inf')
-    patience = 5
+    minRecon = float('inf')
+    patience = 15
     button = 0
 
     for epoch in range(1, 51):
         try:
-            loss, r_loss, k_loss = train()
-            print(f'Epoch: {epoch:03d}, Loss: {loss:.4f} (Recon: {r_loss:.4f}, KL: {k_loss:.4f})')
+            loss, r_loss, k_loss, w_kl = train()
+            print(f'Epoch: {epoch:03d}, Loss: {loss:.4f} (Recon: {r_loss:.4f}, KL: {k_loss:.4f}, Weight:{w_kl:.2f})')
 
-            if loss < minLoss:
-                minLoss = loss
+            if r_loss < minRecon:
+                minRecon = r_loss
                 button = 0
-                torch.save(model.state_dict(), 'vgae_eth_sage_v3_best.pt')
+                torch.save(model.state_dict(), 'vgae_eth_sage_best.pt')
             else:
                 button += 1
                 if button >= patience:
