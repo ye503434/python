@@ -120,4 +120,4 @@ if __name__ == '__main__':
                 raise e
 
     print(f'最佳 Recon Loss: {minRecon:.4f}')
-    print(f'結束時間: {localtime().tm_year}, {localtime().tm_hour}:{localtime().tm_min}')
+    print(f'結束時間: {localtime().tm_year},{localtime().tm_mon},{localtime().tm_mday},{localtime().tm_hour}:{localtime().tm_min}')

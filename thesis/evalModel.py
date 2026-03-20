@@ -1,4 +1,4 @@
-from time import localtime
+from time import localtime, time
 import numpy as np
 import torch
 import torch_geometric.transforms as T
@@ -9,7 +9,6 @@ from torch_geometric.loader import NeighborLoader
 import umap
 import matplotlib.pyplot as plt
 import gc
-import webbrowser
 
 # F.relu 改 F.elu
 class SkipSAGEEncoder(torch.nn.Module):
@@ -95,35 +94,12 @@ if __name__ == '__main__':
     z_embedding = reducer.fit_transform(z_sample)
 
     # --- 新增：互動式繪圖邏輯 ---
-    fig, ax = plt.subplots(figsize=(10, 7))
+    fig, ax = plt.subplots(figsize=(12, 8))
     # 注意：s=1 可能太小點不到，建議設為 5 或 10 方便滑鼠點擊
     scatter = ax.scatter(z_embedding[:, 0], z_embedding[:, 1],
-                         c=z_sample[:, 0], s=10, alpha=0.5, cmap='viridis', picker=True)
-
+                         c=z_sample[:, 0], s=10, alpha=0.5, cmap='viridis')
     plt.colorbar(scatter, label='Latent Intensity')
-    plt.title(f"UMAP Projection (v5-Pro Interactive Study)")
-
-
-    # 定義點擊事件
-    def on_pick(event):
-        ind = event.ind[0]
-        real_idx = indices[ind]  # 換算回 5000 萬地址中的 Index
-        addr = address_map[real_idx]
-
-        print("\n" + "=" * 50)
-        print(f"🎯 [偵測到點擊] 座標: ({z_embedding[ind, 0]:.2f}, {z_embedding[ind, 1]:.2f})")
-        print(f"   Index: {real_idx}")
-        print(f"   Address: {addr}")
-
-        # 開啟瀏覽器
-        url = f"https://etherscan.io/address/{addr}"
-        print(f"   正在開啟: {url}")
-        webbrowser.open(url)
-        print("=" * 50)
-
-
-    # 綁定點擊事件
-    fig.canvas.mpl_connect('pick_event', on_pick)
+    plt.title(f"UMAP Projection ")
 
     # 儲存靜態圖 (維持原樣)
     plt.savefig('vgae_umap_analysis_v5.png', dpi=300)
@@ -136,6 +112,4 @@ if __name__ == '__main__':
                          testData.neg_edge_label_index)
     print(f"AUC: {auc:.4f}")
     print(f"AP:  {ap:.4f}")
-
-    print("\n>>> 互動視窗已啟動！點擊圖中的點即可查看 Etherscan 地址。")
-    plt.show()
+    print(f'結束時間: {localtime().tm_year},{localtime().tm_mon},{localtime().tm_mday},{localtime().tm_hour}:{localtime().tm_min}')
