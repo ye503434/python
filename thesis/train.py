@@ -1,4 +1,4 @@
-from time import localtime
+import time
 import numpy as np
 import torch
 import torch.nn.functional as F
@@ -120,4 +120,4 @@ if __name__ == '__main__':
                 raise e
 
     print(f'最佳 Recon Loss: {minRecon:.4f}')
-    print(f'結束時間: {localtime().tm_year},{localtime().tm_mon},{localtime().tm_mday},{localtime().tm_hour}:{localtime().tm_min}')
+    print(time.strftime("%Y-%M-%D %H:%M:%S",time.localtime()))

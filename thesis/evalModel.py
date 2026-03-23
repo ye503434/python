@@ -1,4 +1,3 @@
-from time import localtime, time
 import numpy as np
 import torch
 import torch_geometric.transforms as T
@@ -9,7 +8,7 @@ from torch_geometric.loader import NeighborLoader
 import umap
 import matplotlib.pyplot as plt
 import gc
-
+import time
 # F.relu 改 F.elu
 class SkipSAGEEncoder(torch.nn.Module):
     def __init__(self, in_channels, out_channels):
@@ -112,4 +111,4 @@ if __name__ == '__main__':
                          testData.neg_edge_label_index)
     print(f"AUC: {auc:.4f}")
     print(f"AP:  {ap:.4f}")
-    print(f'結束時間: {localtime().tm_year},{localtime().tm_mon},{localtime().tm_mday},{localtime().tm_hour}:{localtime().tm_min}')
+    print(time.strftime("%Y-%M-%D %H:%M:%S",time.localtime()))
