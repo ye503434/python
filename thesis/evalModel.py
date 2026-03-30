@@ -53,14 +53,9 @@ if __name__ == '__main__':
     model.load_state_dict(torch.load('vgae_eth_sage_v5_pro.pt'))
     model.eval()
 
-    transform = T.RandomLinkSplit(
-        num_val=0, num_test=0.01,
-        is_undirected=False, add_negative_train_samples=False, split_labels=True
-    )
-    _, _, testData = transform(data)
 
     testLoader = NeighborLoader(
-        testData,
+        data,
         num_neighbors=[10, 5],
         batch_size=1024,
         shuffle=False
@@ -75,6 +70,8 @@ if __name__ == '__main__':
     current_idx = 0
     model.eval()
     with torch.no_grad():
+        start_time = time.time()
+        batch_count = 0
         # --- 第一階段：走訪 DataLoader 抓取原始訊號 ---
         for batch in testLoader:
             batch = batch.to(device)
@@ -133,9 +130,20 @@ if __name__ == '__main__':
         # 標記出極端異常 (Top 0.1%)
         is_extreme = percentile_ranks > 99.9
         print(f"框架運算完成。偵測到 {np.sum(is_extreme)} 個極端異常地址。")
+
+    end_time = time.time()
+    total_sec = end_time - start_time
+    nodes_per_sec = num_nodes / total_sec
+
+    print("\n" + "=" * 40)
+    print("Comment 3: Scalability & Efficiency Report")
+    print(f"Total Nodes Processed: {num_nodes:,}")
+    print(f"End-to-End Latency: {total_sec:.2f} seconds")
+    print(f"Inference Throughput: {nodes_per_sec:,.2f} nodes/sec")
+    print(f"Avg Latency per Node: {(1 / nodes_per_sec) * 1000:.6f} ms")
+    print("=" * 40)
     # 徹底清空 RAM 以供 UMAP 使用
     print("正在清空記憶體...")
-    testData.x = None
     del data, x, edgeIndex, testLoader
     gc.collect()
 
@@ -182,14 +190,14 @@ if __name__ == '__main__':
     print("最終分析圖表已存檔 (vgae_umap_analysis_v5_final.png)。")
 
     # --- 最後的指標計算 ---
-    print("\n正在計算模型性能指標 (AUC/AP)...")
-    auc, ap = model.test(full_z,
-                         testData.pos_edge_label_index,
-                         testData.neg_edge_label_index)
+    # print("\n正在計算模型性能指標 (AUC/AP)...")
+    # auc, ap = model.test(full_z,
+    #                      testData.pos_edge_label_index,
+    #                      testData.neg_edge_label_index)
 
     print("-" * 30)
-    print(f"測試集 AUC: {auc:.4f}")
-    print(f"測試集 AP:  {ap:.4f}")
+    # print(f"測試集 AUC: {auc:.4f}")
+    # print(f"測試集 AP:  {ap:.4f}")
     print(f"完成時間: {time.strftime('%Y-%m-%d %H:%M:%S', time.localtime())}")
     # --- 只有在需要輸出名單時才載入 ---
     print("正在提取 Top 0.1% 異常地址清單...")
@@ -227,7 +235,7 @@ if __name__ == '__main__':
     sampled_ranks_final = percentile_ranks[indices]
 
     # 2. 儲存數據 (這三個變數對應你 umap 的 30,000 點)
-    np.save('umap_2d_coords.npy.npy', z_embedding)  # Z_embedding 是 reducer.fit_transform(z_sample) 的結果
+    np.save('umap_2d_coords.npy', z_embedding)  # Z_embedding 是 reducer.fit_transform(z_sample) 的結果
     np.save('sampled_addresses.npy', z_addresses_sampled)
     np.save('sampled_percentile_ranks.npy', sampled_ranks_final)
 
