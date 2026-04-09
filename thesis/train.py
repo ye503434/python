@@ -106,7 +106,7 @@ if __name__ == '__main__':
             if r_loss < minRecon:
                 minRecon = r_loss
                 button = 0
-                torch.save(model.state_dict(), 'vgae_eth_sage_v5_pro.pt')
+                torch.save(model.state_dict(), '../vgae_eth_sage_v5_pro.pt')
             else:
                 button += 1
                 if button >= patience:
@@ -120,4 +120,4 @@ if __name__ == '__main__':
                 raise e
 
     print(f'最佳 Recon Loss: {minRecon:.4f}')
-    print(time.strftime("%Y-%M-%D %H:%M:%S",time.localtime()))
+    print(time.strftime("%Y-%M-%D %H:%M:%S", time.localtime()))

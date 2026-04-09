@@ -29,9 +29,9 @@ st.markdown("""
 @st.cache_data
 def load_offline_umap_data():
     """載入輕量化的 UMAP 座標與預算排名數據"""
-    coords = np.load('umap_2d_coords.npy')
-    addrs = np.load('sampled_addresses.npy')
-    ranks = np.load('sampled_percentile_ranks.npy')
+    coords = np.load('../umap_2d_coords.npy')
+    addrs = np.load('../sampled_addresses.npy')
+    ranks = np.load('../sampled_percentile_ranks.npy')
 
     return pd.DataFrame({
         'x': coords[:, 0],

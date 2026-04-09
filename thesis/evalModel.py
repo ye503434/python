@@ -50,9 +50,8 @@ if __name__ == '__main__':
     # 參數與權重載入
     channels = 64
     model = VGAE(SkipSAGEEncoder(data.num_features, channels)).to(device)
-    model.load_state_dict(torch.load('vgae_eth_sage_v5_pro.pt'))
+    model.load_state_dict(torch.load('../vgae_eth_sage_v5_pro.pt'))
     model.eval()
-
 
     testLoader = NeighborLoader(
         data,
@@ -125,7 +124,7 @@ if __name__ == '__main__':
         plt.ylabel("Log(Probability Density)")
         plt.grid(True, which="both", ls="-", alpha=0.2)
         plt.savefig('vgae_distribution_loglog_v5.png', dpi=300)
-        print("分佈感知驗證圖表已存檔 (vgae_distribution_loglog_v5.png)。")
+        print("分佈感知驗證圖表已存檔 (../vgae_distribution_loglog_v5.png)。")
 
         # 標記出極端異常 (Top 0.1%)
         is_extreme = percentile_ranks > 99.9
@@ -186,7 +185,7 @@ if __name__ == '__main__':
     plt.ylabel("UMAP dimension 2")
 
     # 儲存最終圖表
-    plt.savefig('vgae_umap_analysis_v5_final.png', dpi=300)
+    plt.savefig('../vgae_umap_analysis_v5_final.png', dpi=300)
     print("最終分析圖表已存檔 (vgae_umap_analysis_v5_final.png)。")
 
     # --- 最後的指標計算 ---
@@ -206,7 +205,7 @@ if __name__ == '__main__':
     top_addresses = address_map[top_anomaly_indices]
 
     # 存成文字檔，這樣你就可以去查這些地址了
-    np.savetxt('top_01_percent_anomalies.txt', top_addresses, fmt='%s')
+    np.savetxt('../top_01_percent_anomalies.txt', top_addresses, fmt='%s')
     # --- 關鍵更改：存成更專業的 CSV 格式 ---
     print("正在將 Top 0.1% 名單匯出為 CSV...")
 
@@ -218,7 +217,7 @@ if __name__ == '__main__':
 
     # 依照分數從高到低排序，把最壞的人放在最上面
     df_anomaly = df_anomaly.sort_values(by='Anomaly_Score', ascending=False)
-    df_anomaly.to_csv('eth_anomalies_report_v5.csv', index=False)
+    df_anomaly.to_csv('../eth_anomalies_report_v5.csv', index=False)
     print("異常報告已生成")
     print(f"清單已存檔，共計 {len(top_addresses)} 個地址。")
     print("-" * 30)
@@ -235,9 +234,9 @@ if __name__ == '__main__':
     sampled_ranks_final = percentile_ranks[indices]
 
     # 2. 儲存數據 (這三個變數對應你 umap 的 30,000 點)
-    np.save('umap_2d_coords.npy', z_embedding)  # Z_embedding 是 reducer.fit_transform(z_sample) 的結果
-    np.save('sampled_addresses.npy', z_addresses_sampled)
-    np.save('sampled_percentile_ranks.npy', sampled_ranks_final)
+    np.save('../umap_2d_coords.npy', z_embedding)  # Z_embedding 是 reducer.fit_transform(z_sample) 的結果
+    np.save('../sampled_addresses.npy', z_addresses_sampled)
+    np.save('../sampled_percentile_ranks.npy', sampled_ranks_final)
 
     print("數據已儲存供 Streamlit 使用。")
     print("-" * 30)
