@@ -1,11 +1,14 @@
+import os
+
 import numpy as np
 import pandas as pd
 import pickle
 import torch
+from dotenv import load_dotenv
 from tqdm import tqdm
-
-file12to13 = r'D:\12000000to12999999_BlockTransaction.csv'
-file11to12 = r'D:\11000000to11999999_BlockTransaction.csv'
+load_dotenv()
+file12to13 = os.getenv('FILE12TO13')
+file11to12 = os.getenv('FILE11TO12')
 chunkSize = 500000
 
 # 把11-13的from到to的地址收集並且寫入二進位檔案。 結果: 共有50196418個唯一節點，邊數:382171280

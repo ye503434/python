@@ -1,9 +1,13 @@
+import os
+
+from dotenv import load_dotenv
 from huggingface_hub import HfApi
 
+load_dotenv()
 api = HfApi()
 
-Token = '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'
-repoId = 'Hinihao/11-13_DATA'
+Token = os.getenv('HUGGINGFACE_TOKEN')
+repoId = os.getenv('HUGGINGFACE_REPO_ID')
 
 print("正在上傳")
 
