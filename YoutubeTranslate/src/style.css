@@ -1,0 +1,19 @@
+
+.my-custom-subtitle {
+    position: fixed !important;
+    bottom: 12% !important;
+    left: 50% !important;
+    transform: translateX(-50%) !important;
+    background-color: rgba(0, 0, 0, 0.75) !important;
+    color: white !important;
+    padding: 8px 20px !important;
+    font-size: 26px !important;
+    font-weight: bold !important;
+    border-radius: 10px !important;
+    z-index: 2147483647 !important;
+    text-align: center !important;
+    line-height: 1.4 !important;
+    text-shadow: 2px 2px 4px rgba(0,0,0,0.5) !important;
+    pointer-events: none !important;
+    display: none; /* 預設先隱藏，等到有翻譯才顯示 */
+}
