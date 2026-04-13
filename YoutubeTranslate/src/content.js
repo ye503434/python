@@ -29,8 +29,6 @@ async function translateText(text){
 
 //顯示在螢幕上
 function showSubtitleOnScreen(text) {
-    console.log("【準備渲染字幕到螢幕上】:", text); // 除錯點 1
-
     let subtitleDiv = document.querySelector('.my-custom-subtitle');
     
     if (!subtitleDiv) {
@@ -42,9 +40,20 @@ function showSubtitleOnScreen(text) {
     subtitleDiv.innerText = text;
     subtitleDiv.style.display = "block";
 }
+
 //韓翻中 主邏輯
 setInterval(async() =>{
     try{
+        const result = await chrome.storage.local.get(['translateEnabled']);
+        const isEnabled = result.translateEnabled !== false;
+        const subtitleDiv = document.querySelector('.my-custom-subtitle');
+
+        if(!isEnabled){
+            if(subtitleDiv) subtitleDiv.style.display = "none";
+            return ;
+        }
+    
+    
         const currentText = getSubtitleOnScreen();
 
         if(currentText ===""){
