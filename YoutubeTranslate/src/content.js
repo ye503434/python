@@ -1,6 +1,6 @@
 let lastText = "" ;
 const gasURL = "https://script.google.com/macros/s/AKfycbzfnDAeTX--db2wNhQ8hwK0GU3ZZwKPXKvq0i8izwpYnzCNLNXmh-VoxOuSy_coLiqb/exec";
-
+console.log("【系統訊息】YouTube 翻譯外掛已成功載入！時間：", new Date().toLocaleTimeString());
 //抓取Youtube cc字幕
 function getSubtitleOnScreen(){
     const segments = document.querySelectorAll('.ytp-caption-segment')
@@ -42,43 +42,40 @@ function showSubtitleOnScreen(text) {
 }
 
 //韓翻中 主邏輯
-setInterval(async() =>{
-    try{
+setInterval(async () => {
+    try {
         const result = await chrome.storage.local.get(['translateEnabled']);
         const isEnabled = result.translateEnabled !== false;
         const subtitleDiv = document.querySelector('.my-custom-subtitle');
 
-        if(!isEnabled){
-            if(subtitleDiv) subtitleDiv.style.display = "none";
-            return ;
-        }
-    
-    
-        const currentText = getSubtitleOnScreen();
-
-        if(currentText ===""){
-            const subtitleDiv = document.querySelector('.my-custom-subtitle');
-            if(subtitleDiv){
-                subtitleDiv.style.display = "none";
-            }
-            lastText = "";
+        if (!isEnabled) {
+            if (subtitleDiv) subtitleDiv.style.display = "none";
             return;
         }
-        if(currentText !== "" && currentText !== lastText ){
-            console.log("偵測到新字幕，準備處裡:", currentText)
-            
-            if (currentText.includes('。') || currentText.includes('.') 
-                || currentText.includes('?')
-                || currentText.length >= 5 ){
-                console.log("正在翻譯")
-                const translate =  await translateText(currentText);
-                console.log(translate)
-                showSubtitleOnScreen(translate);
-            }
-            lastText = currentText;
+
+        const currentText = getSubtitleOnScreen();
+
+        if (currentText === "") {
+            if (subtitleDiv) subtitleDiv.style.display = "none";
+            return; 
         }
-    }catch(e){
-        console.error("執行發生錯誤:", e)
+
+        if (currentText !== lastText) {
+            const tempText = currentText; 
+            lastText = currentText;       
+            
+            console.log("偵測到新字幕:", tempText);
+
+            if (tempText.includes('。') || tempText.includes('.') || 
+                tempText.includes('?') || tempText.length >= 5) {
+                
+                console.log("正在翻譯...");
+                const translated = await translateText(tempText);
+                console.log(translated);
+                showSubtitleOnScreen(translated);
+            }
+        }
+    } catch (e) {
+        console.error("執行發生錯誤:", e);
     }
 }, 1000);
-
