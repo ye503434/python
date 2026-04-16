@@ -1,0 +1,29 @@
+{
+  "manifest_version": 3,
+  "name": "YouTube 字幕自動翻譯器",
+  "version": "1.0",
+  "description": "將 YouTube 的韓文 CC 字幕即時翻譯成中文",
+  "permissions": [
+    "storage"
+  ],
+  "action":{
+    "default_popup": "popup.html"
+  },
+  "host_permissions": [
+    "https://www.youtube.com/*"
+  ],
+  "content_scripts": [
+    {
+      "matches": [
+        "https://www.youtube.com/watch*"
+      ],
+      "js": [
+        "content.js"
+      ],
+      "css":[
+        "style.css"
+      ],
+      "run_at": "document_end"
+    }
+  ]
+}
