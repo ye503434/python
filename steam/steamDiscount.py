@@ -5,9 +5,9 @@ import smtplib
 from email.mime.text import MIMEText
 from email.mime.multipart import  MIMEMultipart
 
-from dotenv import load_dotenv
-
-load_dotenv()
+# 本地端執行需要 ， git Action上不需要
+# from dotenv import load_dotenv
+# load_dotenv()
 GMAIL_USER = os.getenv("GMAIL_USER")
 GMAIL_PASSWORD = os.getenv("GMAIL_PASSWORD")
 RECIPIENT_EMAIL = os.getenv("RECIPIENT_EMAIL")
